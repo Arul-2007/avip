@@ -70,6 +70,18 @@ function readBody(req) {
   });
 }
 
+function parseRawBody(raw, contentType) {
+  if (!raw) return null;
+  if (contentType.includes('application/json')) {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      throw new HttpError(400, 'INVALID_JSON', 'Request body must be valid JSON.');
+    }
+  }
+  return { content: raw };
+}
+
 function serveStatic(req, res, pathname) {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.writeHead(405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'GET, HEAD' });
@@ -121,18 +133,19 @@ function createHandler(db) {
         }
         let body = null;
         if (!['GET', 'HEAD'].includes(req.method)) {
-          const raw = await readBody(req);
-          if (raw) {
-            const contentType = String(req.headers['content-type'] || '');
-            if (contentType.includes('application/json')) {
-              try {
-                body = JSON.parse(raw);
-              } catch {
-                throw new HttpError(400, 'INVALID_JSON', 'Request body must be valid JSON.');
-              }
-            } else {
-              body = { content: raw };
-            }
+          const contentType = String(req.headers['content-type'] || '');
+          let preParsed;
+          try {
+            preParsed = req.body;
+          } catch {
+            throw new HttpError(400, 'INVALID_JSON', 'Request body must be valid JSON.');
+          }
+          if (preParsed !== undefined && preParsed !== null) {
+            body = (typeof preParsed === 'string' || Buffer.isBuffer(preParsed))
+              ? parseRawBody(preParsed.toString(), contentType)
+              : preParsed;
+          } else {
+            body = parseRawBody(await readBody(req), contentType);
           }
         }
         await handleApi({ req, res, db, url, body });

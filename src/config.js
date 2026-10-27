@@ -22,7 +22,7 @@ function loadEnvFile(file) {
 
 loadEnvFile(path.join(ROOT, '.env'));
 
-const DATA_DIR = process.env.AVIP_DATA_DIR || path.join(ROOT, 'data');
+const DATA_DIR = process.env.AVIP_DATA_DIR || (process.env.VERCEL ? '/tmp/avip-data' : path.join(ROOT, 'data'));
 const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 const DATABASE_URL = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL || '';
 const DB_SCHEMA_FILE = process.env.AVIP_SCHEMA || path.join(__dirname, 'schema.sql');

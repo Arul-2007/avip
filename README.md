@@ -281,7 +281,10 @@ avip/
 | `AVIP_SCHEMA` | `src/schema.sql` | Path to the schema applied on startup |
 | `PORT` | `3000` | HTTP port |
 | `HOST` | `127.0.0.1` | Bind address. Use `0.0.0.0` only if LAN access is required |
-| `AVIP_DATA_DIR` | `<project>/data` | Directory for keys and uploads |
+| `AVIP_DATA_DIR` | `<project>/data` (`/tmp/avip-data` on Vercel) | Directory for keys and uploads |
+| `AVIP_HMAC_KEY` | unset | Stable 32-byte base64 HMAC key for APAAR matching. Required in hosted deployments |
+| `AVIP_ENCRYPTION_KEY` | unset | Stable 32-byte base64 AES key for APAAR encryption. Required in hosted deployments |
+| `AVIP_KEY_ID` | `k1-env` | Key identifier used when keys come from environment variables |
 | `MOCK_PROVIDER_DOWN` | unset | Set to `1` to make the mock identity provider return `UNAVAILABLE` |
 
 ### Run on another port
@@ -315,6 +318,32 @@ macOS/Linux:
 ```bash
 AVIP_DATA_DIR=/tmp/avip-data node src/server.js
 ```
+
+### Deploy to Vercel
+
+The repository includes `api/index.js` and `vercel.json` for the Vercel Node runtime. Static files come from `public/`; API requests go to `/api/v1/*`.
+
+Add these environment variables in the Vercel project:
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | Supabase Postgres connection string |
+| `AVIP_HMAC_KEY` | `hmacKey` from your local `data/keys.json` |
+| `AVIP_ENCRYPTION_KEY` | `encryptionKey` from your local `data/keys.json` |
+| `AVIP_DATA_DIR` | `/tmp/avip-data` |
+| `PG_POOL_MAX` | `3` for a small demo |
+
+Use the same keys as the database that was seeded. New keys cannot decrypt existing APAAR values or match existing HMAC tokens.
+
+Deploy, then verify:
+
+```text
+https://YOUR-PROJECT.vercel.app/api/v1/health
+```
+
+If the health endpoint returns `STARTUP_FAILED`, open **Vercel -> Project -> Logs** and check the message. Common causes are a missing `DATABASE_URL`, incorrectly copied keys, or a Supabase network/SSL failure.
+
+Vercel's filesystem is ephemeral. Uploaded CSV files under `/tmp` disappear after a cold start, so this prototype should not be treated as durable file storage on Vercel.
 
 ---
 
